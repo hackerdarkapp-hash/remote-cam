@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.cache/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Source maps
+*.map
+
+# Replit internals
+.local/
+attached_assets/
+replit.nix
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
