@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "RemoteCam",
+    "slug": "remote-cam",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "remote-cam",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.remotecam",
+      "infoPlist": {
+        "NSCameraUsageDescription": "RemoteCam needs camera access to stream live video.",
+        "NSMicrophoneUsageDescription": "RemoteCam may use the microphone during streaming."
+      }
+    },
+    "android": {
+      "package": "com.remotecam",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#000000"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_CAMERA",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "RemoteCam needs camera access to stream live video.",
+          "microphonePermission": "RemoteCam may use the microphone during streaming.",
+          "recordAudioAndroid": true
+        }
+      ],
+      "expo-keep-awake",
+      "./plugins/with-background-streaming"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
