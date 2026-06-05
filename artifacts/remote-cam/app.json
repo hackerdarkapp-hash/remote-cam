@@ -3,6 +3,7 @@
     "name": "RemoteCam",
     "slug": "remote-cam",
     "version": "1.0.0",
+    "owner": "adminsrms-team",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "remote-cam",
@@ -63,6 +64,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "87537c50-1b59-4714-bafe-91b3f9a918dd"
+      }
     }
   }
 }
