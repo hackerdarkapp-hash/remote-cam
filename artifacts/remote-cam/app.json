@@ -58,7 +58,6 @@
           "recordAudioAndroid": true
         }
       ],
-      "expo-keep-awake",
       "./plugins/with-background-streaming"
     ],
     "experiments": {
