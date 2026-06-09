@@ -1,8 +1,8 @@
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useState } from "react";
+import React from "react";
 import {
-  Dimensions,
   Platform,
   StyleSheet,
   Text,
@@ -10,272 +10,90 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { useColors } from "@/hooks/useColors";
 
-const { width: SCREEN_W } = Dimensions.get("window");
-const BTN_GAP = 12;
-const BTN_SIZE = (SCREEN_W - BTN_GAP * 5) / 4;
-
-type BtnType = "number" | "operator" | "special" | "equals";
-
-interface CalcButton {
-  label: string;
-  type: BtnType;
-  wide?: boolean;
-  action: string;
-}
-
-const BUTTONS: CalcButton[][] = [
-  [
-    { label: "AC", type: "special", action: "clear" },
-    { label: "+/-", type: "special", action: "toggle" },
-    { label: "%", type: "special", action: "percent" },
-    { label: "÷", type: "operator", action: "/" },
-  ],
-  [
-    { label: "7", type: "number", action: "7" },
-    { label: "8", type: "number", action: "8" },
-    { label: "9", type: "number", action: "9" },
-    { label: "×", type: "operator", action: "*" },
-  ],
-  [
-    { label: "4", type: "number", action: "4" },
-    { label: "5", type: "number", action: "5" },
-    { label: "6", type: "number", action: "6" },
-    { label: "−", type: "operator", action: "-" },
-  ],
-  [
-    { label: "1", type: "number", action: "1" },
-    { label: "2", type: "number", action: "2" },
-    { label: "3", type: "number", action: "3" },
-    { label: "+", type: "operator", action: "+" },
-  ],
-  [
-    { label: "0", type: "number", wide: true, action: "0" },
-    { label: ".", type: "number", action: "." },
-    { label: "=", type: "equals", action: "equals" },
-  ],
-];
-
-function formatDisplay(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num)) return value;
-  if (Math.abs(num) >= 1e12 || (Math.abs(num) < 1e-6 && num !== 0)) {
-    return num.toExponential(4);
-  }
-  const parts = value.split(".");
-  const intPart = parseInt(parts[0] ?? "0", 10).toLocaleString("en-US");
-  return parts.length > 1 ? `${intPart}.${parts[1]}` : intPart;
-}
-
-function getFontSize(display: string): number {
-  const len = display.replace(/,/g, "").length;
-  if (len <= 6) return 80;
-  if (len <= 9) return 64;
-  if (len <= 12) return 48;
-  return 36;
-}
-
-export default function CalculatorScreen() {
+export default function HomeScreen() {
+  const router = useRouter();
+  const colors = useColors();
   const insets = useSafeAreaInsets();
 
-  const [display, setDisplay] = useState("0");
-  const [expression, setExpression] = useState("");
-  const [previousValue, setPreviousValue] = useState<string | null>(null);
-  const [operator, setOperator] = useState<string | null>(null);
-  const [waitingForOperand, setWaitingForOperand] = useState(false);
-  const [justCalculated, setJustCalculated] = useState(false);
-  const [activeOperator, setActiveOperator] = useState<string | null>(null);
-
-  const calculate = useCallback(
-    (prev: string, curr: string, op: string): string => {
-      const a = parseFloat(prev);
-      const b = parseFloat(curr);
-      switch (op) {
-        case "+":
-          return String(a + b);
-        case "-":
-          return String(a - b);
-        case "*":
-          return String(a * b);
-        case "/":
-          return b === 0 ? "Error" : String(a / b);
-        default:
-          return curr;
-      }
-    },
-    []
-  );
-
-  const handleAction = useCallback(
-    (action: string) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-      if ("0123456789".includes(action) || action === ".") {
-        if (action === "." && display.includes(".") && !waitingForOperand) return;
-
-        if (waitingForOperand || justCalculated) {
-          setDisplay(action === "." ? "0." : action);
-          setWaitingForOperand(false);
-          setJustCalculated(false);
-        } else {
-          if (display === "0" && action !== ".") {
-            setDisplay(action);
-          } else if (display.replace(/[^0-9]/g, "").length < 12) {
-            setDisplay(display + action);
-          }
-        }
-        return;
-      }
-
-      if (action === "clear") {
-        setDisplay("0");
-        setExpression("");
-        setPreviousValue(null);
-        setOperator(null);
-        setWaitingForOperand(false);
-        setJustCalculated(false);
-        setActiveOperator(null);
-        return;
-      }
-
-      if (action === "toggle") {
-        if (display !== "0" && display !== "Error") {
-          setDisplay(display.startsWith("-") ? display.slice(1) : "-" + display);
-        }
-        return;
-      }
-
-      if (action === "percent") {
-        if (display !== "Error") {
-          const val = parseFloat(display) / 100;
-          setDisplay(String(val));
-        }
-        return;
-      }
-
-      if (["+", "-", "*", "/"].includes(action)) {
-        setActiveOperator(action);
-        setJustCalculated(false);
-
-        if (previousValue !== null && operator && !waitingForOperand) {
-          const result = calculate(previousValue, display, operator);
-          setDisplay(result);
-          setPreviousValue(result);
-          setExpression(
-            `${formatDisplay(result)} ${action === "*" ? "×" : action === "/" ? "÷" : action}`
-          );
-        } else {
-          setPreviousValue(display);
-          setExpression(
-            `${formatDisplay(display)} ${action === "*" ? "×" : action === "/" ? "÷" : action}`
-          );
-        }
-        setOperator(action);
-        setWaitingForOperand(true);
-        return;
-      }
-
-      if (action === "equals") {
-        if (previousValue !== null && operator) {
-          const result = calculate(previousValue, display, operator);
-          const opSymbol =
-            operator === "*" ? "×" : operator === "/" ? "÷" : operator;
-          setExpression(
-            `${formatDisplay(previousValue)} ${opSymbol} ${formatDisplay(display)} =`
-          );
-          setDisplay(result);
-          setPreviousValue(null);
-          setOperator(null);
-          setWaitingForOperand(false);
-          setJustCalculated(true);
-          setActiveOperator(null);
-        }
-      }
-    },
-    [display, previousValue, operator, waitingForOperand, justCalculated, calculate]
-  );
-
-  const getBgColor = (btn: CalcButton): string => {
-    if (btn.type === "operator") {
-      return activeOperator === btn.action && waitingForOperand
-        ? "#ffffff"
-        : "#ff9500";
-    }
-    if (btn.type === "special") return "#a5a5a5";
-    if (btn.type === "equals") return "#ff9500";
-    return "#333333";
-  };
-
-  const getTextColor = (btn: CalcButton): string => {
-    if (btn.type === "operator" && activeOperator === btn.action && waitingForOperand) {
-      return "#ff9500";
-    }
-    return "#ffffff";
-  };
-
-  const botPad = Platform.OS === "web" ? 20 : insets.bottom;
   const topPad = Platform.OS === "web" ? 60 : insets.top;
+  const botPad = Platform.OS === "web" ? 40 : insets.bottom;
 
-  const displayLabel = display === "Error" ? "Error" : formatDisplay(display);
-  const fontSize = getFontSize(displayLabel);
+  const goCamera = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push("/camera");
+  };
+
+  const goViewer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push("/viewer");
+  };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.background, paddingTop: topPad, paddingBottom: botPad },
+      ]}
+    >
       <StatusBar style="light" />
 
-      <View style={[styles.displayArea, { paddingTop: topPad + 20, paddingBottom: 20 }]}>
-        <Text style={styles.expression} numberOfLines={1}>
-          {expression}
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.iconWrap}>
+          <Feather name="video" size={36} color={colors.primary} />
+        </View>
+        <Text style={[styles.appName, { color: colors.foreground }]}>RemoteCam</Text>
+        <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
+          Stream your camera live to any device
         </Text>
-        <Text
-          style={[styles.displayText, { fontSize }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.4}
+      </View>
+
+      {/* Action cards */}
+      <View style={styles.cards}>
+        {/* Go Live */}
+        <TouchableOpacity
+          style={[styles.card, styles.primaryCard]}
+          onPress={goCamera}
+          activeOpacity={0.85}
         >
-          {displayLabel}
-        </Text>
-      </View>
-
-      <View style={[styles.buttonGrid, { paddingBottom: botPad + 16 }]}>
-        {BUTTONS.map((row, rowIdx) => (
-          <View key={rowIdx} style={styles.row}>
-            {row.map((btn) => {
-              const btnWidth = btn.wide
-                ? BTN_SIZE * 2 + BTN_GAP
-                : BTN_SIZE;
-
-              return (
-                <TouchableOpacity
-                  key={btn.action}
-                  style={[
-                    styles.button,
-                    {
-                      width: btnWidth,
-                      height: BTN_SIZE,
-                      borderRadius: BTN_SIZE / 2,
-                      backgroundColor: getBgColor(btn),
-                    },
-                    btn.wide && styles.wideButton,
-                  ]}
-                  onPress={() => handleAction(btn.action)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.buttonText,
-                      btn.type === "special" && styles.specialText,
-                      { color: getTextColor(btn) },
-                    ]}
-                  >
-                    {btn.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          <View style={styles.cardIcon}>
+            <Feather name="radio" size={28} color="#fff" />
           </View>
-        ))}
+          <View style={styles.cardText}>
+            <Text style={styles.cardTitle}>Go Live</Text>
+            <Text style={styles.cardSub}>
+              Stream your camera in the background — even when the screen is off
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={20} color="rgba(255,255,255,0.6)" />
+        </TouchableOpacity>
+
+        {/* Watch Stream */}
+        <TouchableOpacity
+          style={[styles.card, styles.secondaryCard, { borderColor: colors.border }]}
+          onPress={goViewer}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.cardIcon, styles.secondaryIcon]}>
+            <Feather name="monitor" size={28} color={colors.primary} />
+          </View>
+          <View style={styles.cardText}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Watch Stream</Text>
+            <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
+              Enter a room code to watch a live stream from any camera
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+        </TouchableOpacity>
       </View>
+
+      {/* Footer note */}
+      <Text style={[styles.footer, { color: colors.mutedForeground }]}>
+        Streams are encrypted end-to-end via WebSocket
+      </Text>
     </View>
   );
 }
@@ -283,52 +101,80 @@ export default function CalculatorScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
-    justifyContent: "flex-end",
-  },
-  displayArea: {
     paddingHorizontal: 24,
-    alignItems: "flex-end",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
+  },
+  header: {
     flex: 1,
-  },
-  expression: {
-    fontSize: 22,
-    color: "rgba(255,255,255,0.4)",
-    marginBottom: 6,
-    fontWeight: "400" as const,
-  },
-  displayText: {
-    color: "#ffffff",
-    fontWeight: "200" as const,
-    letterSpacing: -2,
-    textAlign: "right",
-  },
-  buttonGrid: {
-    paddingHorizontal: BTN_GAP,
-    gap: BTN_GAP,
-  },
-  row: {
-    flexDirection: "row",
-    gap: BTN_GAP,
     justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
   },
-  button: {
+  iconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,149,0,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  appName: {
+    fontSize: 36,
+    fontWeight: "700" as const,
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  cards: {
+    gap: 14,
+    marginBottom: 8,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 16,
+    padding: 18,
+    gap: 14,
+  },
+  primaryCard: {
+    backgroundColor: "#ff9500",
+  },
+  secondaryCard: {
+    backgroundColor: "#1c1c1e",
+    borderWidth: 1,
+  },
+  cardIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
-  wideButton: {
-    alignItems: "flex-start",
-    paddingLeft: BTN_SIZE / 2 - 4,
+  secondaryIcon: {
+    backgroundColor: "rgba(255,149,0,0.12)",
   },
-  buttonText: {
-    fontSize: 34,
-    fontWeight: "400" as const,
-    color: "#ffffff",
+  cardText: {
+    flex: 1,
+    gap: 4,
   },
-  specialText: {
-    color: "#000000",
-    fontSize: 30,
-    fontWeight: "500" as const,
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: "700" as const,
+    color: "#fff",
+  },
+  cardSub: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: "rgba(255,255,255,0.75)",
+  },
+  footer: {
+    fontSize: 12,
+    textAlign: "center",
+    paddingTop: 8,
   },
 });
