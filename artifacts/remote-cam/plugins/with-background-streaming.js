@@ -74,9 +74,10 @@ function withStreamingGradle(config) {
       config.modResults.contents = config.modResults.contents.replace(
         /dependencies\s*\{/,
         `dependencies {
-    implementation 'androidx.camera:camera-core:1.3.4'
-    implementation 'androidx.camera:camera-camera2:1.3.4'
-    implementation 'androidx.camera:camera-lifecycle:1.3.4'
+    implementation 'androidx.camera:camera-core:1.4.2'
+    implementation 'androidx.camera:camera-camera2:1.4.2'
+    implementation 'androidx.camera:camera-lifecycle:1.4.2'
+    implementation 'androidx.concurrent:concurrent-futures:1.2.0'
     implementation('io.socket:socket.io-client:2.1.0') {
         exclude group: 'org.json', module: 'json'
     }`
