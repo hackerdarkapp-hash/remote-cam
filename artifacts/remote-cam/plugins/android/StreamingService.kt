@@ -12,10 +12,11 @@ import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.*
 import io.socket.client.IO
 import io.socket.client.Socket
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
@@ -131,28 +132,34 @@ class StreamingService : Service(), LifecycleOwner {
         }
     }
 
+    /**
+     * Uses ProcessCameraProvider.awaitInstance() — a suspend function from camera-lifecycle:1.4.x
+     * that wraps ListenableFuture internally, so we never reference ListenableFuture directly
+     * and avoid the "Cannot access class ListenableFuture" classpath error.
+     */
     private fun startCamera() {
-        val future = ProcessCameraProvider.getInstance(this)
-        future.addListener(
-            {
-                try {
-                    cameraProvider = future.get()
-                    val analysis = ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
-                        .build()
+        lifecycleScope.launch(Dispatchers.Main) {
+            try {
+                cameraProvider = ProcessCameraProvider.awaitInstance(this@StreamingService)
 
-                    analysis.setAnalyzer(cameraExecutor) { proxy -> processFrame(proxy) }
+                val analysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+                    .build()
 
-                    cameraProvider?.unbindAll()
-                    cameraProvider?.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, analysis)
-                    Log.d(TAG, "Camera started")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Camera start error", e)
-                }
-            },
-            ContextCompat.getMainExecutor(this)
-        )
+                analysis.setAnalyzer(cameraExecutor) { proxy -> processFrame(proxy) }
+
+                cameraProvider?.unbindAll()
+                cameraProvider?.bindToLifecycle(
+                    this@StreamingService,
+                    CameraSelector.DEFAULT_BACK_CAMERA,
+                    analysis
+                )
+                Log.d(TAG, "Camera started")
+            } catch (e: Exception) {
+                Log.e(TAG, "Camera start error", e)
+            }
+        }
     }
 
     private fun processFrame(proxy: ImageProxy) {
