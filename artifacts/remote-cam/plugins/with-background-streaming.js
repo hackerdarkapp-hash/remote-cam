@@ -74,11 +74,11 @@ function withStreamingGradle(config) {
       config.modResults.contents = config.modResults.contents.replace(
         /dependencies\s*\{/,
         `dependencies {
-    // CameraX 1.4.x — provides ProcessCameraProvider.awaitInstance() suspend fn (no ListenableFuture needed)
+    // CameraX 1.4.x — ProcessCameraProvider.awaitInstance() suspend fn (no ListenableFuture in caller)
     implementation 'androidx.camera:camera-core:1.4.2'
     implementation 'androidx.camera:camera-camera2:1.4.2'
     implementation 'androidx.camera:camera-lifecycle:1.4.2'
-    // Coroutines support for lifecycleScope in Service
+    // lifecycleScope in Service
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
     implementation('io.socket:socket.io-client:2.1.0') {
         exclude group: 'org.json', module: 'json'
@@ -117,13 +117,25 @@ function withStreamingKotlinFiles(config) {
 
 function withStreamingPackage(config) {
   return withMainApplication(config, (config) => {
-    const src = config.modResults.contents;
+    let src = config.modResults.contents;
+
+    // Add import if missing
+    if (!src.includes("import com.remotecam.StreamingPackage")) {
+      src = src.replace(
+        /^(package com\.remotecam\n)/m,
+        "$1import com.remotecam.StreamingPackage\n"
+      );
+    }
+
+    // Add package registration if missing
     if (!src.includes("StreamingPackage")) {
-      config.modResults.contents = src.replace(
+      src = src.replace(
         /PackageList\(this\)\.packages/,
         "PackageList(this).packages.also { it.add(StreamingPackage()) }"
       );
     }
+
+    config.modResults.contents = src;
     return config;
   });
 }
