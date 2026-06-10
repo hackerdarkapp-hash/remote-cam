@@ -3,7 +3,7 @@
     "name": "RemoteCam",
     "slug": "remote-cam",
     "version": "1.0.0",
-    "owner": "adminsrms-team",
+    "owner": "admin_hsh",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "remote-cam",
@@ -67,7 +67,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "87537c50-1b59-4714-bafe-91b3f9a918dd"
+        "projectId": "4a46fc2c-fa3e-47ba-8be1-b1bd68e48eb6"
       }
     }
   }
