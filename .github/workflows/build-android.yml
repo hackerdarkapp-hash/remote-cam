@@ -1,0 +1,103 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Node.js ───────────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ── 3. pnpm ──────────────────────────────────────────────────────────
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.26.1'
+
+      # ── 4. Cache pnpm store ──────────────────────────────────────────────
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      # ── 5. Install dependencies ──────────────────────────────────────────
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── 6. Java 17 (required by Android Gradle plugin) ──────────────────
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # ── 7. Cache Gradle ──────────────────────────────────────────────────
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('artifacts/remote-cam/android/**/*.gradle*', 'artifacts/remote-cam/android/**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      # ── 8. Expo Prebuild → generates the android/ folder ────────────────
+      - name: Run Expo Prebuild
+        working-directory: artifacts/remote-cam
+        run: pnpm exec expo prebuild --platform android --no-install
+        env:
+          CI: true
+
+      # ── 9. Make Gradlew executable ───────────────────────────────────────
+      - name: Make gradlew executable
+        working-directory: artifacts/remote-cam/android
+        run: chmod +x gradlew
+
+      # ── 10. Build Debug APK (no signing required) ────────────────────────
+      - name: Build Debug APK
+        working-directory: artifacts/remote-cam/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.parallel=true"
+
+      # ── 11. Rename APK ───────────────────────────────────────────────────
+      - name: Rename APK
+        run: |
+          mkdir -p output
+          cp artifacts/remote-cam/android/app/build/outputs/apk/debug/app-debug.apk \
+             output/RemoteCam-debug-${{ github.run_number }}.apk
+
+      # ── 12. Upload as artifact ───────────────────────────────────────────
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RemoteCam-APK-${{ github.run_number }}
+          path: output/RemoteCam-debug-${{ github.run_number }}.apk
+          retention-days: 14
+
+      # ── 13. Print download info ──────────────────────────────────────────
+      - name: Build summary
+        run: |
+          echo "### ✅ APK built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**File:** RemoteCam-debug-${{ github.run_number }}.apk" >> $GITHUB_STEP_SUMMARY
+          echo "**Download:** Go to this run → Artifacts section → RemoteCam-APK-${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
